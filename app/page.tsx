@@ -22,7 +22,7 @@ export default function ChatPage() {
 
       case "tool_use_start":
         setToolActivities((prev) => [
-          ...prev,
+          ...prev.map((a) => ({ ...a, done: true })),
           { toolUseId: event.id, name: event.name, done: false },
         ])
         break
@@ -50,7 +50,7 @@ export default function ChatPage() {
       case "done":
         setMessages(event.messages)
         setStreamingText("")
-        setToolActivities([])
+        setToolActivities((prev) => prev.map((a) => ({ ...a, done: true })))
         setIsStreaming(false)
         break
 
