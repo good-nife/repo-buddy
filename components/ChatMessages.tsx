@@ -78,8 +78,8 @@ export function ChatMessages({ messages, streamingText, toolActivities, isStream
                 <ToolActivity key={a.toolUseId} {...a} />
               ))}
 
-              {!streamingText && toolActivities.length === 0 && (
-                <div className="flex gap-1 px-4 py-3">
+              {!streamingText && toolActivities.every((a) => a.done) && (
+                <div className="flex items-center gap-1.5 px-4 py-3 text-xs text-slate-400">
                   {[0, 150, 300].map((d) => (
                     <span
                       key={d}
@@ -87,6 +87,7 @@ export function ChatMessages({ messages, streamingText, toolActivities, isStream
                       style={{ animationDelay: `${d}ms` }}
                     />
                   ))}
+                  <span className="ml-1">thinking…</span>
                 </div>
               )}
             </div>
