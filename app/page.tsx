@@ -1,10 +1,27 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import { ChatMessages } from "@/components/ChatMessages"
 import { ChatInput } from "@/components/ChatInput"
 import type { ToolActivityEntry } from "@/components/ToolActivity"
 import type { BetaMessageParam, SSEEvent } from "@/types/chat"
+
+const STORAGE_KEY = "repo-buddy-messages"
+
+function loadMessages(): BetaMessageParam[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    return raw ? JSON.parse(raw) : []
+  } catch {
+    return []
+  }
+}
+
+function saveMessages(messages: BetaMessageParam[]) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(messages))
+  } catch {}
+}
 
 export default function ChatPage() {
   const [messages, setMessages] = useState<BetaMessageParam[]>([])
@@ -13,6 +30,10 @@ export default function ChatPage() {
   const [toolActivities, setToolActivities] = useState<ToolActivityEntry[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    setMessages(loadMessages())
+  }, [])
 
   const handleEvent = useCallback((event: SSEEvent) => {
     switch (event.type) {
@@ -48,7 +69,10 @@ export default function ChatPage() {
         break
 
       case "done":
-        setMessages(event.messages)
+        setMessages((prev) => {
+          saveMessages(event.messages)
+          return event.messages
+        })
         setStreamingText("")
         setToolActivities((prev) => prev.map((a) => ({ ...a, done: true })))
         setIsStreaming(false)
@@ -61,6 +85,11 @@ export default function ChatPage() {
         break
     }
   }, [])
+
+  function clearHistory() {
+    setMessages([])
+    localStorage.removeItem(STORAGE_KEY)
+  }
 
   async function handleSubmit() {
     const userText = input.trim()
@@ -122,14 +151,24 @@ export default function ChatPage() {
     <div className="flex flex-col h-screen">
       <header className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 shrink-0">
         <h1 className="text-sm font-semibold text-slate-900">Repo Buddy</h1>
-        <form action="/api/logout" method="POST">
-          <button
-            type="submit"
-            className="text-xs text-slate-500 hover:text-slate-700 transition-colors"
-          >
-            Sign out
-          </button>
-        </form>
+        <div className="flex items-center gap-4">
+          {messages.length > 0 && !isStreaming && (
+            <button
+              onClick={clearHistory}
+              className="text-xs text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              Clear history
+            </button>
+          )}
+          <form action="/api/logout" method="POST">
+            <button
+              type="submit"
+              className="text-xs text-slate-500 hover:text-slate-700 transition-colors"
+            >
+              Sign out
+            </button>
+          </form>
+        </div>
       </header>
 
       {error && (
