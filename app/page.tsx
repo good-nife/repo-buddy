@@ -59,6 +59,14 @@ export default function ChatPage() {
         ])
         break
 
+      case "tool_detail":
+        setToolActivities((prev) =>
+          prev.map((a) =>
+            a.toolUseId === event.toolUseId ? { ...a, label: event.label } : a
+          )
+        )
+        break
+
       case "tool_command_start":
         setToolActivities((prev) =>
           prev.map((a) =>

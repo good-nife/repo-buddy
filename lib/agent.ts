@@ -48,7 +48,8 @@ export function buildTools(repoDir: string, emit: (event: SSEEvent) => void) {
         },
         required: ["path"],
       },
-      async run({ path: filePath }) {
+      async run({ path: filePath }, context) {
+        emit({ type: "tool_detail", toolUseId: context?.toolUse.id ?? "", label: filePath })
         const resolved = resolveSafe(repoDir, filePath)
         return await fs.readFile(resolved, "utf-8")
       },
@@ -65,7 +66,8 @@ export function buildTools(repoDir: string, emit: (event: SSEEvent) => void) {
         },
         required: ["path", "content"],
       },
-      async run({ path: filePath, content }) {
+      async run({ path: filePath, content }, context) {
+        emit({ type: "tool_detail", toolUseId: context?.toolUse.id ?? "", label: filePath })
         const resolved = resolveSafe(repoDir, filePath)
         await fs.mkdir(path.dirname(resolved), { recursive: true })
         await fs.writeFile(resolved, content, "utf-8")
@@ -83,7 +85,8 @@ export function buildTools(repoDir: string, emit: (event: SSEEvent) => void) {
         },
         required: ["path"],
       },
-      async run({ path: dirPath }) {
+      async run({ path: dirPath }, context) {
+        emit({ type: "tool_detail", toolUseId: context?.toolUse.id ?? "", label: dirPath })
         const resolved = resolveSafe(repoDir, dirPath)
         const entries = await fs.readdir(resolved, { withFileTypes: true })
         return entries.map((e) => `${e.isDirectory() ? "d" : "f"} ${e.name}`).join("\n")
@@ -143,7 +146,8 @@ export function buildTools(repoDir: string, emit: (event: SSEEvent) => void) {
         },
         required: ["message"],
       },
-      async run({ message }) {
+      async run({ message }, context) {
+        emit({ type: "tool_detail", toolUseId: context?.toolUse.id ?? "", label: message })
         const { stdout: status } = await execFileAsync("git", ["status", "--porcelain"], { cwd: repoDir })
         if (!status.trim()) return "Nothing to commit — working tree is clean."
 

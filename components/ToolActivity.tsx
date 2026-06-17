@@ -1,10 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 
 export interface ToolActivityEntry {
   toolUseId: string
   name: string
+  label?: string
   command?: string
   args?: string[]
   stdout?: string
@@ -14,12 +15,21 @@ export interface ToolActivityEntry {
   done: boolean
 }
 
-export function ToolActivity({ name, command, args, stdout, stderr, exitCode, timedOut, done }: ToolActivityEntry) {
+export function ToolActivity({ name, label, command, args, stdout, stderr, exitCode, timedOut, done }: ToolActivityEntry) {
   const [open, setOpen] = useState(false)
+  const [slow, setSlow] = useState(false)
 
-  const label =
+  useEffect(() => {
+    if (done) { setSlow(false); return }
+    const t = setTimeout(() => setSlow(true), 30_000)
+    return () => clearTimeout(t)
+  }, [done])
+
+  const mainLabel =
     name === "run_command" && command
       ? `$ ${command} ${args?.join(" ") ?? ""}`.trim()
+      : label
+      ? `${name.replace(/_/g, " ")} · ${label}`
       : name.replace(/_/g, " ")
 
   const hasOutput = Boolean(stdout || stderr)
@@ -32,13 +42,19 @@ export function ToolActivity({ name, command, args, stdout, stderr, exitCode, ti
         onClick={() => hasOutput && setOpen((o) => !o)}
         disabled={!hasOutput}
       >
-        <span className={`shrink-0 ${!done ? "text-slate-400" : failed ? "text-red-500" : "text-green-600"}`}>
+        <span className={`shrink-0 ${!done ? "text-slate-400 animate-spin" : failed ? "text-red-500" : "text-green-600"}`}>
           {!done ? "⟳" : failed ? "✗" : "✓"}
         </span>
-        <span className={`truncate ${failed ? "text-red-700" : "text-slate-700"}`}>{label}</span>
+        <span className={`truncate ${failed ? "text-red-700" : "text-slate-700"}`}>{mainLabel}</span>
         {timedOut && <span className="ml-auto text-amber-600 shrink-0">timed out</span>}
         {hasOutput && <span className="ml-auto text-slate-400 shrink-0">{open ? "▲" : "▼"}</span>}
       </button>
+
+      {slow && !done && (
+        <div className="px-3 py-1 border-t border-slate-200 text-amber-600">
+          still working…
+        </div>
+      )}
 
       {open && hasOutput && (
         <div className="border-t border-slate-200 max-h-64 overflow-auto p-3 text-slate-700 whitespace-pre-wrap leading-relaxed">
