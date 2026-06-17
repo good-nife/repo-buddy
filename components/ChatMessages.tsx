@@ -11,12 +11,39 @@ interface Props {
   isStreaming: boolean
 }
 
-function getTextContent(content: BetaMessageParam["content"]): string {
-  if (typeof content === "string") return content
-  return content
-    .filter((b): b is Extract<typeof b, { type: "text" }> => b.type === "text")
-    .map((b) => b.text)
-    .join("")
+type ContentBlock = Extract<BetaMessageParam["content"], unknown[]>[number]
+
+function renderContent(content: BetaMessageParam["content"]) {
+  if (typeof content === "string") {
+    return <span className="whitespace-pre-wrap">{content}</span>
+  }
+
+  return (
+    <>
+      {(content as ContentBlock[]).map((block, i) => {
+        if (block.type === "text") {
+          return <span key={i} className="whitespace-pre-wrap">{block.text}</span>
+        }
+        if (block.type === "image") {
+          const src =
+            block.source.type === "base64"
+              ? `data:${block.source.media_type};base64,${block.source.data}`
+              : block.source.type === "url"
+              ? block.source.url
+              : null
+          if (!src) return null
+          // eslint-disable-next-line @next/next/no-img-element
+          return <img key={i} src={src} alt="attached image" className="mt-1 max-h-48 rounded-lg object-contain" />
+        }
+        return null
+      })}
+    </>
+  )
+}
+
+function isToolResultOnly(msg: BetaMessageParam): boolean {
+  if (msg.role !== "user" || typeof msg.content === "string") return false
+  return (msg.content as ContentBlock[]).every((b) => b.type === "tool_result")
 }
 
 export function ChatMessages({ messages, streamingText, toolActivities, isStreaming }: Props) {
@@ -26,13 +53,7 @@ export function ChatMessages({ messages, streamingText, toolActivities, isStream
     bottomRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages, streamingText, toolActivities])
 
-  const visibleMessages = messages.filter((m) => {
-    if (m.role === "user") {
-      const content = m.content
-      if (Array.isArray(content) && content.every((b) => b.type === "tool_result")) return false
-    }
-    return true
-  })
+  const visibleMessages = messages.filter((m) => !isToolResultOnly(m))
 
   return (
     <div className="flex-1 overflow-y-auto px-4 py-6">
@@ -45,20 +66,23 @@ export function ChatMessages({ messages, streamingText, toolActivities, isStream
 
         {visibleMessages.map((msg, i) => {
           const isUser = msg.role === "user"
-          const text = getTextContent(msg.content)
+          const hasText =
+            typeof msg.content === "string"
+              ? !!msg.content
+              : (msg.content as ContentBlock[]).some((b) => b.type === "text" || b.type === "image")
 
-          if (!text) return null
+          if (!hasText) return null
 
           return (
             <div key={i} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
               <div
-                className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${
+                className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
                   isUser
                     ? "bg-indigo-600 text-white rounded-br-sm"
                     : "bg-white border border-slate-200 text-slate-800 rounded-bl-sm shadow-sm"
                 }`}
               >
-                {text}
+                {renderContent(msg.content)}
               </div>
             </div>
           )

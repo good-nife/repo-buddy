@@ -2,11 +2,21 @@
 
 import { useState, useCallback, useEffect } from "react"
 import { ChatMessages } from "@/components/ChatMessages"
-import { ChatInput } from "@/components/ChatInput"
+import { ChatInput, type PendingImage } from "@/components/ChatInput"
 import type { ToolActivityEntry } from "@/components/ToolActivity"
 import type { BetaMessageParam, SSEEvent } from "@/types/chat"
 
 const STORAGE_KEY = "repo-buddy-messages"
+
+function stripImageData(messages: BetaMessageParam[]): BetaMessageParam[] {
+  return messages.map((msg) => {
+    if (msg.role !== "user" || typeof msg.content === "string") return msg
+    const stripped = (msg.content as unknown[]).map((block: any) =>
+      block.type === "image" ? { type: "text", text: "[image]" } : block
+    )
+    return { ...msg, content: stripped }
+  })
+}
 
 function loadMessages(): BetaMessageParam[] {
   try {
@@ -19,13 +29,14 @@ function loadMessages(): BetaMessageParam[] {
 
 function saveMessages(messages: BetaMessageParam[]) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(messages))
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(stripImageData(messages)))
   } catch {}
 }
 
 export default function ChatPage() {
   const [messages, setMessages] = useState<BetaMessageParam[]>([])
   const [input, setInput] = useState("")
+  const [pendingImage, setPendingImage] = useState<PendingImage | null>(null)
   const [streamingText, setStreamingText] = useState("")
   const [toolActivities, setToolActivities] = useState<ToolActivityEntry[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
@@ -69,7 +80,7 @@ export default function ChatPage() {
         break
 
       case "done":
-        setMessages((prev) => {
+        setMessages(() => {
           saveMessages(event.messages)
           return event.messages
         })
@@ -93,13 +104,32 @@ export default function ChatPage() {
 
   async function handleSubmit() {
     const userText = input.trim()
-    if (!userText || isStreaming) return
+    if ((!userText && !pendingImage) || isStreaming) return
 
-    const newMessage: BetaMessageParam = { role: "user", content: userText }
+    const contentBlocks: any[] = []
+    if (pendingImage) {
+      contentBlocks.push({
+        type: "image",
+        source: {
+          type: "base64",
+          media_type: pendingImage.mediaType,
+          data: pendingImage.dataUrl.split(",")[1],
+        },
+      })
+    }
+    if (userText) {
+      contentBlocks.push({ type: "text", text: userText })
+    }
+
+    const newMessage: BetaMessageParam = {
+      role: "user",
+      content: contentBlocks.length === 1 && !pendingImage ? userText : contentBlocks,
+    }
     const nextMessages = [...messages, newMessage]
 
     setMessages(nextMessages)
     setInput("")
+    setPendingImage(null)
     setStreamingText("")
     setToolActivities([])
     setIsStreaming(true)
@@ -174,10 +204,7 @@ export default function ChatPage() {
       {error && (
         <div className="bg-red-50 border-b border-red-200 px-4 py-2 text-sm text-red-700">
           {error}
-          <button
-            className="ml-2 underline text-xs"
-            onClick={() => setError(null)}
-          >
+          <button className="ml-2 underline text-xs" onClick={() => setError(null)}>
             dismiss
           </button>
         </div>
@@ -195,6 +222,8 @@ export default function ChatPage() {
         onChange={setInput}
         onSubmit={handleSubmit}
         disabled={isStreaming}
+        pendingImage={pendingImage}
+        onImageChange={setPendingImage}
       />
     </div>
   )
