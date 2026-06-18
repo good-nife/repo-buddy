@@ -7,6 +7,7 @@ export default function LoginPage() {
   const [apiKey, setApiKey] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [showKeyHelp, setShowKeyHelp] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -48,9 +49,32 @@ export default function LoginPage() {
         />
 
         <div className="mt-4">
-          <label className="block text-xs font-medium text-slate-500 mb-1">
-            Anthropic API key <span className="font-normal text-slate-400">(optional — use your own credits)</span>
-          </label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="text-xs font-medium text-slate-500">
+              Anthropic API key <span className="font-normal text-slate-400">(optional — use your own credits)</span>
+            </label>
+            <button
+              type="button"
+              onClick={() => setShowKeyHelp((v) => !v)}
+              className="text-xs text-indigo-500 hover:text-indigo-700 transition-colors shrink-0 ml-2"
+            >
+              {showKeyHelp ? "Hide" : "How to get one"}
+            </button>
+          </div>
+
+          {showKeyHelp && (
+            <div className="mb-2 rounded-lg bg-slate-50 border border-slate-200 px-3 py-2.5 text-xs text-slate-600 space-y-1.5">
+              <p className="font-medium text-slate-700">Getting an Anthropic API key</p>
+              <ol className="list-decimal list-inside space-y-1 text-slate-500">
+                <li>Go to <a href="https://console.anthropic.com" target="_blank" rel="noreferrer" className="text-indigo-500 hover:underline">console.anthropic.com</a> and create an account.</li>
+                <li>Add billing credits under <span className="font-medium text-slate-600">Settings → Billing</span>. $5–10 is plenty to start.</li>
+                <li>Go to <span className="font-medium text-slate-600">API Keys</span> in the sidebar, click <span className="font-medium text-slate-600">Create Key</span>, and copy it.</li>
+                <li>Paste the key below (starts with <span className="font-mono">sk-ant-</span>).</li>
+              </ol>
+              <p className="text-slate-400">Your key is encrypted and only used for your sessions. Monitor usage at console.anthropic.com.</p>
+            </div>
+          )}
+
           <input
             type="password"
             value={apiKey}
