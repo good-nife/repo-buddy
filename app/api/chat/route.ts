@@ -1,15 +1,21 @@
 import Anthropic from "@anthropic-ai/sdk"
+import { cookies } from "next/headers"
 import { withWorkspace } from "@/lib/workspace"
 import { buildTools, SYSTEM_PROMPT } from "@/lib/agent"
+import { decryptApiKey, API_KEY_COOKIE_NAME } from "@/lib/auth"
 import type { BetaMessageParam } from "@/types/chat"
 import type { SSEEvent } from "@/types/chat"
 
 export const maxDuration = 300
 
-const client = new Anthropic()
-
 export async function POST(req: Request) {
   const { messages } = (await req.json()) as { messages: BetaMessageParam[] }
+
+  const secret = process.env.SESSION_SECRET ?? ""
+  const cookieStore = await cookies()
+  const encryptedKey = cookieStore.get(API_KEY_COOKIE_NAME)?.value
+  const apiKey = encryptedKey ? (decryptApiKey(encryptedKey, secret) ?? undefined) : undefined
+  const client = new Anthropic({ apiKey })
 
   const encoder = new TextEncoder()
 

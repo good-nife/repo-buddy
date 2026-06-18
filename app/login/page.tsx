@@ -4,6 +4,7 @@ import { useState } from "react"
 
 export default function LoginPage() {
   const [code, setCode] = useState("")
+  const [apiKey, setApiKey] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -15,7 +16,7 @@ export default function LoginPage() {
     const res = await fetch("/api/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code }),
+      body: JSON.stringify({ code, apiKey: apiKey.trim() || undefined }),
     })
 
     if (res.ok) {
@@ -45,6 +46,19 @@ export default function LoginPage() {
           autoFocus
           className="mt-4 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
         />
+
+        <div className="mt-4">
+          <label className="block text-xs font-medium text-slate-500 mb-1">
+            Anthropic API key <span className="font-normal text-slate-400">(optional — use your own credits)</span>
+          </label>
+          <input
+            type="password"
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+            placeholder="sk-ant-..."
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          />
+        </div>
 
         {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
 
